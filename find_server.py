@@ -3,7 +3,9 @@ from flask_apscheduler import APScheduler
 import time
 import json
 import threading
+import socket
 
+LOCAL_PORT = 5000
 OVERTIME_INTERVAL = 300
 NODE_TYPES = ["cloud","edge","mobile"]
 nodes = {}
@@ -56,8 +58,10 @@ def get_ip():
 
 
 if __name__ == '__main__':
+    addr = socket.gethostbyname(socket.gethostname())
+    print("** Find Server run @ \033[1;32;40m{}:{}\033[0m **".format(addr,int(LOCAL_PORT)))
     app.config.from_object(SchedulerConfig())
     scheduler = APScheduler()
     scheduler.init_app(app)
     scheduler.start()
-    app.run("0.0.0.0", 5000, False)
+    app.run("0.0.0.0", LOCAL_PORT, False)
