@@ -65,4 +65,3 @@ if __name__ == '__main__':
     scheduler.init_app(app)
     scheduler.start()
     app.run("0.0.0.0", LOCAL_PORT, False)
-    
