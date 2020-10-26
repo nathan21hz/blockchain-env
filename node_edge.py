@@ -14,6 +14,7 @@ NODE_TYPE = "edge"
 NODE_TYPES = ["cloud","edge","mobile"]
 MAX_CONNECTION = 2
 MAX_HOPS = 5
+VERSION = 2020102601
 
 Lock = threading.Lock()
 raw_nodes = []
@@ -43,12 +44,13 @@ def get_raw_nodes():
 
 @app.route('/ping')
 def ping():
-    return "pong"
-
-@app.route('/type')
-def node_type():
     global NODE_TYPE
-    return NODE_TYPE
+    global VERSION
+    data = {
+        "version":VERSION,
+        "type":NODE_TYPE
+    }
+    return json.dumps(data)
 
 @app.route("/blocks")
 def get_blocks():
@@ -61,7 +63,7 @@ def get_data():
     global Lock
     global data_cache
     if request.remote_addr != "127.0.0.1":
-    	return "local request only"
+        return "local request only"
     data = {
         "payload":request.get_json(),
         "hops":0

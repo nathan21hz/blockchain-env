@@ -13,6 +13,7 @@ LOCAL_SERVER_PORT = 5002
 NODE_TYPE = "cloud"
 NODE_TYPES = ["cloud","edge","mobile"]
 MAX_CONNECTION = 2
+VERSION = 2020102601
 
 Lock = threading.Lock()
 raw_nodes = []
@@ -42,12 +43,13 @@ def get_raw_nodes():
 
 @app.route('/ping')
 def ping():
-    return "pong"
-
-@app.route('/type')
-def node_type():
     global NODE_TYPE
-    return NODE_TYPE
+    global VERSION
+    data = {
+        "version":VERSION,
+        "type":NODE_TYPE
+    }
+    return json.dumps(data)
 
 @app.route("/blocks")
 def get_blocks():
