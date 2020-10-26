@@ -5,6 +5,7 @@ import threading
 import requests
 import json
 import random
+import hashlib
 
 FIND_SERVER_URL = "127.0.0.1:5000"
 LOCAL_ADDR = "127.0.0.1"
@@ -26,6 +27,7 @@ nodes_in_use = {
 }
 block_chain = []
 data_cache = []
+inbox = {}
 
 app = Flask(__name__)
 
@@ -70,6 +72,21 @@ def get_data_test():
     global Lock
     global data_cache
     return json.dumps(data_cache)
+
+@app.route("/msg",methods=["POST"])
+def get_msg():
+    global Lock
+    global inbox
+
+    in_msg = request.get_json()
+    m = hashlib.md5(in_msg["from_ip"]+str(in_msg["from_port"])+str(in_msg["time"]).encode())
+    msg_id = m.hexdigest()
+
+    Lock.acquire()
+    inbox[msg_id] = in_msg["payload"]
+    Lock.release()
+    
+    return msg_id
 
 def main_loop():
     global a
@@ -172,12 +189,18 @@ def get_blocks_from_nodes():
             node = random.choice(nodes_in_use["cloud"])
             res = requests.get("http://{}:{}/blocks".format(node["addr"],node["port"]),timeout=5)
             new_block_chain = json.loads(res.text)
+            ###################
+            #TODO
+            ###################
             if len(new_block_chain) > len(block_chain):
                 block_chain = new_block_chain
         elif nodes_in_use["edge"]:
             node = random.choice(nodes_in_use["edge"])
             res = requests.get("http://{}:{}/blocks".format(node["addr"],node["port"]),timeout=5)
             new_block_chain = json.loads(res.text)
+            ###################
+            #TODO
+            ###################
             if len(new_block_chain) > len(block_chain):
                 block_chain = new_block_chain
         else:
@@ -191,8 +214,46 @@ def get_blocks_from_nodes():
         refresh_inuse_nodes()
         return False
 
+def direct_msg(to_ip,to_port,payload):
+    global LOCAL_ADDR
+    global LOCAL_SERVER_PORT
+
+    data = {
+        "from_ip":LOCAL_ADDR,
+        "from_port":LOCAL_SERVER_PORT,
+        "time":int(time.time()),
+        "payload":payload
+    }
+    try:
+        res = requests.post("http://{}:{}/msg".format(to_ip,to_port),timeout=5,json=data)
+    except:
+        print("Msg Send Err.")
+
+def del_msg_inbox(msg_id):
+    global Lock
+    global inbox
+    Lock.acquire()
+    try:
+        del inbox[msg_id]
+    except:
+        print("Del Err")
+    Lock.release()
+    return True
+
+def opening():
+    opening_str = """
+    ____  __           __        __          _             ______          
+   / __ )/ /___  _____/ /_______/ /_  ____ _(_)___        / ____/___ _   __
+  / __  / / __ \\/ ___/ //_/ ___/ __ \\/ __ `/ / __ \\______/ __/ / __ \\ | / /
+ / /_/ / / /_/ / /__/ ,< / /__/ / / / /_/ / / / / /_____/ /___/ / / / |/ / 
+/_____/_/\\____/\\___/_/|_|\\___/_/ /_/\\__,_/_/_/ /_/     /_____/_/ /_/|___/  
+                                                                           
+    """
+    print(opening_str)
+
 
 if __name__ == '__main__':
+    opening()
     try:
         argv = sys.argv[1:]
         opts, args = getopt.getopt(argv,"hf:p:")
