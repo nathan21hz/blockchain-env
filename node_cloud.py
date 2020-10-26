@@ -34,7 +34,7 @@ app = Flask(__name__)
 @app.route('/')
 def hello_world():
     global a
-    return 'Hello, World!'+str(a)
+    return str(a)
 
 @app.route('/nodes')
 def get_raw_nodes():
@@ -44,16 +44,26 @@ def get_raw_nodes():
 def ping():
     return "pong"
 
+@app.route('/type')
+def node_type():
+    global NODE_TYPE
+    return NODE_TYPE
+
 @app.route("/blocks")
 def get_blocks():
     global block_chain
     return json.dumps(block_chain)
 
-@app.route("/addblock")
+#Local Request Only 
+@app.route("/addblock",methods=["POST"])
 def add_blocks():
     global block_chain
-    global a
-    block_chain.append(a)
+    global Lock
+    if request.remote_addr != "127.0.0.1":
+        return "local request only"
+    Lock.acquire()
+    block_chain.append(request.get_json())
+    Lock.release()
     return "ok"
 
 @app.route("/data",methods=["POST"])
@@ -63,15 +73,22 @@ def get_data():
     data = request.get_json()
     print(data)
     Lock.acquire()
-    data_cache.append(data)
+    data_cache.append(data["payload"])
     Lock.release()
     return "ok"
 
-@app.route("/data1",methods=["GET"])
+#Local Request Only 
+@app.route("/get_data",methods=["GET"])
 def get_data_test():
     global Lock
     global data_cache
-    return json.dumps(data_cache)
+    if request.remote_addr != "127.0.0.1":
+        return "local request only"
+    Lock.acquire()
+    data_text = json.dumps(data_cache)
+    data_cache = []
+    Lock.release()
+    return data_text
 
 @app.route("/msg",methods=["POST"])
 def get_msg():

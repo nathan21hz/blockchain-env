@@ -45,15 +45,23 @@ def get_raw_nodes():
 def ping():
     return "pong"
 
+@app.route('/type')
+def node_type():
+    global NODE_TYPE
+    return NODE_TYPE
+
 @app.route("/blocks")
 def get_blocks():
     global block_chain
     return json.dumps(block_chain)
 
+#Local Request Only
 @app.route("/data",methods=["POST"])
 def get_data():
     global Lock
     global data_cache
+    if request.remote_addr != "127.0.0.1":
+    	return "local request only"
     data = {
         "payload":request.get_json(),
         "hops":0
