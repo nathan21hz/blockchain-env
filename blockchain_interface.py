@@ -1,7 +1,7 @@
 import requests
 import json
 
-VERSION = 2020102601
+VERSION = 2020102701
 
 def check_node(port,n_type):
     global VERSION
@@ -56,6 +56,35 @@ class Cloud():
             print("[BlockChain] Unknown Error")
             return False
 
+    #获取当前节点收到的直达消息
+    def get_msg(self):
+        try:
+            res = requests.get("http://localhost:{}/get_msg".format(self.port))
+            msgs = json.loads(res.text)
+            return msgs
+        except:
+            print("[BlockChain] Unknown Error")
+            return False
+
+    #通过当前节点发送直达消息
+    def send_msg(self,to_ip,to_port,msg_format,payload):
+        msg = {
+            "to_ip":to_ip,
+            "to_port":to_port,
+            "format":msg_format,
+            "payload":payload
+        }
+        try:
+            res = requests.post("http://localhost:{}/send_msg".format(self.port),json=msg)
+            if res.text == "ok":
+                return True
+            else:
+                print("[BlockChain] Node Error")
+                return False
+        except:
+            print("[BlockChain] Unknown Error")
+            return False
+
 class Edge():
     def __init__(self,port):
         self.port = port
@@ -74,7 +103,6 @@ class Edge():
             print("[BlockChain] Unknown Error")
             return False
 
-
     # 获取当前节点区块链 
     def get_blocks(self):
         try:
@@ -85,5 +113,33 @@ class Edge():
             print("[BlockChain] Unknown Error")
             return False
 
+    #获取当前节点收到的直达消息
+    def get_msg(self):
+        try:
+            res = requests.get("http://localhost:{}/get_msg".format(self.port))
+            msgs = json.loads(res.text)
+            return msgs
+        except:
+            print("[BlockChain] Unknown Error")
+            return False
+
+    #通过当前节点发送直达消息
+    def send_msg(self,to_ip,to_port,msg_format,payload):
+        msg = {
+            "to_ip":to_ip,
+            "to_port":to_port,
+            "format":msg_format,
+            "payload":payload
+        }
+        try:
+            res = requests.post("http://localhost:{}/send_msg".format(self.port),json=msg)
+            if res.text == "ok":
+                return True
+            else:
+                print("[BlockChain] Node Error")
+                return False
+        except:
+            print("[BlockChain] Unknown Error")
+            return False
 
 

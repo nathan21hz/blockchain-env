@@ -13,7 +13,7 @@ LOCAL_SERVER_PORT = 5002
 NODE_TYPE = "cloud"
 NODE_TYPES = ["cloud","edge","mobile"]
 MAX_CONNECTION = 2
-VERSION = 2020102601
+VERSION = 2020102701
 
 Lock = threading.Lock()
 raw_nodes = []
@@ -28,7 +28,7 @@ nodes_in_use = {
 }
 block_chain = []
 data_cache = []
-inbox = {}
+inbox = []
 
 app = Flask(__name__)
 
@@ -45,7 +45,11 @@ def get_raw_nodes():
 def ping():
     global NODE_TYPE
     global VERSION
+    global LOCAL_ADDR
+    global LOCAL_SERVER_PORT
     data = {
+        "ip":LOCAL_ADDR,
+        "port":LOCAL_SERVER_PORT,
         "version":VERSION,
         "type":NODE_TYPE
     }
@@ -93,19 +97,51 @@ def get_data_test():
     return data_text
 
 @app.route("/msg",methods=["POST"])
-def get_msg():
+def receive_msg():
     global Lock
     global inbox
 
     in_msg = request.get_json()
-    m = hashlib.md5(in_msg["from_ip"]+str(in_msg["from_port"])+str(in_msg["time"]).encode())
-    msg_id = m.hexdigest()
 
     Lock.acquire()
-    inbox[msg_id] = in_msg["payload"]
+    inbox.append(in_msg)
     Lock.release()
-    
-    return msg_id
+    return "received"
+
+#Local Request Only
+@app.route("/get_msg",methods=["GET"])
+def get_msg():
+    global inbox
+    global Lock
+    if request.remote_addr != "127.0.0.1":
+        return "local request only"
+    Lock.acquire()
+    inbox_text = json.dumps(inbox)
+    inbox = []
+    Lock.release()
+    return inbox_text
+
+#Local Request Only
+@app.route("/send_msg",methods=["POST"])
+def send_msg():
+    global LOCAL_ADDR
+    global LOCAL_SERVER_PORT
+    if request.remote_addr != "127.0.0.1":
+        return "local request only"
+    data = request.get_json()
+    msg = {
+        "from_ip":LOCAL_ADDR,
+        "from_port":LOCAL_SERVER_PORT,
+        "time":int(time.time()),
+        "format":data["format"],
+        "payload":data["payload"]
+    }
+    try:
+        res = requests.post("http://{}:{}/msg".format(data["to_ip"],data["to_port"]),timeout=5,json=data)
+        return "ok"
+    except:
+        print("Msg Send Err.")
+        return "err"
 
 def main_loop():
     global a
@@ -232,21 +268,6 @@ def get_blocks_from_nodes():
         print("refresh in-use nodes...")
         refresh_inuse_nodes()
         return False
-
-def direct_msg(to_ip,to_port,payload):
-    global LOCAL_ADDR
-    global LOCAL_SERVER_PORT
-
-    data = {
-        "from_ip":LOCAL_ADDR,
-        "from_port":LOCAL_SERVER_PORT,
-        "time":int(time.time()),
-        "payload":payload
-    }
-    try:
-        res = requests.post("http://{}:{}/msg".format(to_ip,to_port),timeout=5,json=data)
-    except:
-        print("Msg Send Err.")
 
 def del_msg_inbox(msg_id):
     global Lock
