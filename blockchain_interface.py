@@ -1,12 +1,12 @@
 import requests
 import json
 
-VERSION = 2020102701
+VERSION = 2020110301
 
 def check_node(port,n_type):
     global VERSION
     try:
-        res = requests.get("http://localhost:{}/ping".format(port))
+        res = requests.get("http://localhost:{}/ping?type=interface".format(port))
         res_json = json.loads(res.text)
         if res_json["type"] == n_type and res_json["version"] == VERSION:
             print("[BlockChain] Node OK")
