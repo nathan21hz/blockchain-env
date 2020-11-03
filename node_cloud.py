@@ -1,5 +1,5 @@
 import sys, getopt
-from flask import Flask, request
+from flask import Flask, request, abort
 import time
 import threading
 import requests
@@ -13,10 +13,11 @@ LOCAL_SERVER_PORT = 5002
 NODE_TYPE = "cloud"
 NODE_TYPES = ["cloud","edge","mobile"]
 MAX_CONNECTION = 2
-VERSION = 2020102701
+VERSION = 2020110301
 
 Lock = threading.Lock()
 raw_nodes = []
+connecing_nodes = {}
 all_nodes = {
     "cloud":[],
     "edge":[],
@@ -39,14 +40,37 @@ def hello_world():
 
 @app.route('/nodes')
 def get_raw_nodes():
-    return json.dumps(raw_nodes)
+    global connecing_nodes
+    return json.dumps(connecing_nodes)
 
-@app.route('/ping')
+@app.route('/ping',methods=["GET"])
 def ping():
     global NODE_TYPE
     global VERSION
+    global NODE_TYPES
     global LOCAL_ADDR
     global LOCAL_SERVER_PORT
+    global connecing_nodes
+    global Lock
+
+    addr = request.remote_addr
+    port = request.args.get("port")
+    ntype = request.args.get("type")
+    if addr=="127.0.0.1" and port==None and ntype=="interface":
+        pass
+    elif port!=None and ntype in NODE_TYPES:
+        node = {
+            "addr":addr,
+            "port":port,
+            "type":ntype,
+            "time":int(time.time())
+        }
+        Lock.acquire()
+        connecing_nodes[str(addr+":"+port)] = node
+        Lock.release()
+    else:
+        abort(400)
+        return
     data = {
         "ip":LOCAL_ADDR,
         "port":LOCAL_SERVER_PORT,
@@ -143,6 +167,38 @@ def send_msg():
         print("Msg Send Err.")
         return "err"
 
+#Only for Dev
+@app.route("/observe",methods=["GET"])
+def observe_page():
+    global VERSION
+    global FIND_SERVER_URL
+    global NODE_TYPE
+    global NODE_TYPES
+    global LOCAL_ADDR
+    global LOCAL_SERVER_PORT
+    global connecing_nodes
+    global nodes_in_use
+    global block_chain
+    global data_cache
+    global inbox
+    all_status = ""
+    all_status += "<h1>Blockchain Env</h1>"
+    all_status += "Version:{}<br>".format(VERSION)
+    all_status += "{} @ {}:{}<br>".format(NODE_TYPE,LOCAL_ADDR,LOCAL_SERVER_PORT)
+    all_status += "Find Server:{}<br>".format(FIND_SERVER_URL)
+
+    all_status += "<h3>Network</h3>"
+    all_status += "Connecting: Nodes:<br>{}<br>".format(str(connecing_nodes))
+    all_status += "In Use Nodes:<br>{}<br>".format(str(nodes_in_use))
+
+    all_status += "<h3>Data</h3>"
+    all_status += "Blockchian:<br>{}<br>".format(str(block_chain))
+    all_status += "Data Cache:<br>{}<br>".format(str(data_cache))
+    all_status += "Message Inbox:<br>{}<br>".format(str(inbox))
+    return all_status
+
+
+#主程序循环
 def main_loop():
     global a
     global raw_nodes
@@ -161,6 +217,7 @@ def main_loop():
             refresh_inuse_nodes()
         time.sleep(5)
 
+#获取本机IP
 def get_ip():
     global LOCAL_ADDR
     try:
@@ -170,9 +227,12 @@ def get_ip():
     except:
         return False
 
+# 寻找节点
 def find_nodes():
     global raw_nodes
     global all_nodes
+    temp_raw_nodes = {}
+    # TODO:
     try:
         res = requests.get("http://{}?port={}&type={}".format(FIND_SERVER_URL,str(LOCAL_SERVER_PORT),NODE_TYPE))
     except:
@@ -195,9 +255,12 @@ def find_nodes():
     all_nodes = temp_nodes
     print(temp_nodes)
 
+# 测试节点连通性
 def ping_node(addr,port):
+    global NODE_TYPE
+    global LOCAL_SERVER_PORT
     try:
-        res = requests.get("http://{}:{}/ping".format(addr,port),timeout=5)
+        res = requests.get("http://{}:{}/ping?port={}&type={}".format(addr,port,str(LOCAL_SERVER_PORT),NODE_TYPE),timeout=5)
         if res.status_code == 200:
             return True
         else:
@@ -205,6 +268,7 @@ def ping_node(addr,port):
     except:
         return False
 
+# 刷新使用中节点列表
 def refresh_inuse_nodes():
     global raw_nodes
     global all_nodes
@@ -233,6 +297,7 @@ def refresh_inuse_nodes():
             break
     print(nodes_in_use)
 
+# 从其他节点获取区块链
 def get_blocks_from_nodes():
     global raw_nodes
     global all_nodes
@@ -269,17 +334,7 @@ def get_blocks_from_nodes():
         refresh_inuse_nodes()
         return False
 
-def del_msg_inbox(msg_id):
-    global Lock
-    global inbox
-    Lock.acquire()
-    try:
-        del inbox[msg_id]
-    except:
-        print("Del Err")
-    Lock.release()
-    return True
-
+# 启动画面
 def opening():
     opening_str = """
     ____  __           __        __          _             ______          

@@ -13,10 +13,11 @@ NODE_TYPE = "edge"
 NODE_TYPES = ["cloud","edge","mobile"]
 MAX_CONNECTION = 2
 MAX_HOPS = 5
-VERSION = 2020102701
+VERSION = 2020102702
 
 Lock = threading.Lock()
-raw_nodes = []
+raw_nodes = {}
+connecing_nodes = {}
 all_nodes = {
     "cloud":[],
     "edge":[],
@@ -39,14 +40,37 @@ def hello_world():
 
 @app.route('/nodes')
 def get_raw_nodes():
-    return json.dumps(raw_nodes)
+    global connecing_nodes
+    return json.dumps(connecing_nodes)
 
-@app.route('/ping')
+@app.route('/ping',methods=["GET"])
 def ping():
     global NODE_TYPE
     global VERSION
+    global NODE_TYPES
     global LOCAL_ADDR
     global LOCAL_SERVER_PORT
+    global connecing_nodes
+    global Lock
+
+    addr = request.remote_addr
+    port = request.args.get("port")
+    ntype = request.args.get("type")
+    if addr=="127.0.0.1" and port==None and ntype=="interface":
+        pass
+    elif port!=None and ntype in NODE_TYPES:
+        node = {
+            "addr":addr,
+            "port":port,
+            "type":ntype,
+            "time":int(time.time())
+        }
+        Lock.acquire()
+        connecing_nodes[str(addr+":"+port)] = node
+        Lock.release()
+    else:
+        abort(400)
+        return
     data = {
         "ip":LOCAL_ADDR,
         "port":LOCAL_SERVER_PORT,
@@ -138,6 +162,37 @@ def send_msg():
         print("Msg Send Err.")
         return "err"
 
+#Only for Dev
+@app.route("/observe",methods=["GET"])
+def observe_page():
+    global VERSION
+    global FIND_SERVER_URL
+    global NODE_TYPE
+    global NODE_TYPES
+    global LOCAL_ADDR
+    global LOCAL_SERVER_PORT
+    global connecing_nodes
+    global nodes_in_use
+    global block_chain
+    global data_cache
+    global inbox
+    all_status = ""
+    all_status += "<h1>Blockchain Env</h1>"
+    all_status += "Version:{}<br>".format(VERSION)
+    all_status += "{} @ {}:{}<br>".format(NODE_TYPE,LOCAL_ADDR,LOCAL_SERVER_PORT)
+    all_status += "Find Server:{}<br>".format(FIND_SERVER_URL)
+
+    all_status += "<h3>Network</h3>"
+    all_status += "Connecting: Nodes:<br>{}<br>".format(str(connecing_nodes))
+    all_status += "In Use Nodes:<br>{}<br>".format(str(nodes_in_use))
+
+    all_status += "<h3>Data</h3>"
+    all_status += "Blockchian:<br>{}<br>".format(str(block_chain))
+    all_status += "Data Cache:<br>{}<br>".format(str(data_cache))
+    all_status += "Message Inbox:<br>{}<br>".format(str(inbox))
+    return all_status
+
+
 def main_loop():
     global a
     global raw_nodes
@@ -170,6 +225,7 @@ def get_ip():
 def find_nodes():
     global raw_nodes
     global all_nodes
+    #TODO:
     try:
         res = requests.get("http://{}?port={}&type={}".format(FIND_SERVER_URL,str(LOCAL_SERVER_PORT),NODE_TYPE))
     except:
@@ -177,7 +233,6 @@ def find_nodes():
         return
     raw_list = json.loads(res.text)
     raw_nodes = raw_list
-    #print(raw_list)
     temp_nodes = {
         "cloud":[],
         "edge":[],
@@ -194,7 +249,7 @@ def find_nodes():
 
 def ping_node(addr,port):
     try:
-        res = requests.get("http://{}:{}/ping".format(addr,port),timeout=5)
+        res = requests.get("http://{}:{}/ping?port={}&type={}".format(addr,port,str(LOCAL_SERVER_PORT),NODE_TYPE),timeout=5)
         if res.status_code == 200:
             return True
         else:
