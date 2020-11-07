@@ -58,7 +58,11 @@ def get_ip():
 
 
 if __name__ == '__main__':
-    addr = socket.gethostbyname(socket.gethostname())
+    try:
+        addr = socket.gethostbyname(socket.gethostname())
+    except:
+        print("Can't get IP, use 127.0.0.1")
+        addr = "127.0.0.1"
     print("** Find Server run @ \033[1;32;40m{}:{}\033[0m **".format(addr,int(LOCAL_PORT)))
     app.config.from_object(SchedulerConfig())
     scheduler = APScheduler()

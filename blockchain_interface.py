@@ -1,7 +1,7 @@
 import requests
 import json
 
-VERSION = 2020110301
+VERSION = 2020110701
 
 def check_node(port,n_type):
     global VERSION

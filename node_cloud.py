@@ -13,7 +13,7 @@ LOCAL_SERVER_PORT = 5002
 NODE_TYPE = "cloud"
 NODE_TYPES = ["cloud","edge","mobile"]
 MAX_CONNECTION = 2
-VERSION = 2020110301
+VERSION = 2020110701
 
 Lock = threading.Lock()
 raw_nodes = []
@@ -182,6 +182,7 @@ def observe_page():
     global data_cache
     global inbox
     all_status = ""
+    #all_status += "<meta http-equiv=\"refresh\" content=\"20\">\n"
     all_status += "<h1>Blockchain Env</h1>"
     all_status += "Version:{}<br>".format(VERSION)
     all_status += "{} @ {}:{}<br>".format(NODE_TYPE,LOCAL_ADDR,LOCAL_SERVER_PORT)
@@ -337,12 +338,13 @@ def get_blocks_from_nodes():
 # 启动画面
 def opening():
     opening_str = """
-    ____  __           __        __          _             ______          
-   / __ )/ /___  _____/ /_______/ /_  ____ _(_)___        / ____/___ _   __
-  / __  / / __ \\/ ___/ //_/ ___/ __ \\/ __ `/ / __ \\______/ __/ / __ \\ | / /
- / /_/ / / /_/ / /__/ ,< / /__/ / / / /_/ / / / / /_____/ /___/ / / / |/ / 
-/_____/_/\\____/\\___/_/|_|\\___/_/ /_/\\__,_/_/_/ /_/     /_____/_/ /_/|___/  
-                                                                           
+\033[1;32;40m    ______         __     __          _     
+   / ____/__  ____/ /____/ /_  ____ _(_)___ 
+  / /_  / _ \\/ __  / ___/ __ \\/ __ `/ / __ \\
+ / __/ /  __/ /_/ / /__/ / / / /_/ / / / / /
+/_/    \\___/\\__,_/\\___/_/ /_/\\__,_/_/_/ /_/ 
+
+Blockchain-based Federated Learning Platform \033[0m                        
     """
     print(opening_str)
 
