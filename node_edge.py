@@ -176,9 +176,21 @@ def observe_page():
     global block_chain
     global data_cache
     global inbox
+
+    opening_str = """
+<pre>
+    ______         __     __          _     
+   / ____/__  ____/ /____/ /_  ____ _(_)___ 
+  / /_  / _ \\/ __  / ___/ __ \\/ __ `/ / __ \\
+ / __/ /  __/ /_/ / /__/ / / / /_/ / / / / /
+/_/    \\___/\\__,_/\\___/_/ /_/\\__,_/_/_/ /_/ 
+Blockchain-based Federated Learning Platform     
+</pre>                 
+    """
+
     all_status = ""
     #all_status += "<meta http-equiv=\"refresh\" content=\"20\">\n"
-    all_status += "<h1>Blockchain Env</h1>"
+    all_status += opening_str
     all_status += "Version:{}<br>".format(VERSION)
     all_status += "{} @ {}:{}<br>".format(NODE_TYPE,LOCAL_ADDR,LOCAL_SERVER_PORT)
     all_status += "Find Server:{}<br>".format(FIND_SERVER_URL)
